@@ -56,15 +56,15 @@ void *systemTransmit(void *args) {
     
     while (1) {
 
-        pthread_mutex_lock((*systemArgs).mutex);
+        pthread_mutex_lock(systemArgs->mutex);
 
-        (*systemArgs).frame->can_id = 0x01;   
-        (*systemArgs).frame->can_dlc = 1;
-        (*systemArgs).frame->data[0] = 0x01;
+        systemArgs->frame->can_id = 0x01;   
+        systemArgs->frame->can_dlc = 1;
+        systemArgs->frame->data[0] = 0x01;
 
-        socket_write((*systemArgs).file_descriptor, (*systemArgs).frame);
+        socket_write(systemArgs->file_descriptor, systemArgs->frame);
 
-        pthread_mutex_unlock((*systemArgs).mutex);
+        pthread_mutex_unlock(systemArgs->mutex);
 
         sleep(5);
 
@@ -81,22 +81,22 @@ void *systemReceive(void *args) {
 
     while (1) {
 
-        pthread_mutex_lock((*systemArgs).mutex);
+        pthread_mutex_lock(systemArgs->mutex);
 
         FD_ZERO(&readfd);
         FD_SET(systemArgs->file_descriptor, &readfd);
 
-        selected = select((*systemArgs).file_descriptor + 1, &readfd, NULL, NULL, &tv);
+        selected = select(systemArgs->file_descriptor + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
             perror("Select error: ");
-            pthread_mutex_unlock((*systemArgs).mutex);
+            pthread_mutex_unlock(systemArgs->mutex);
         } else if (selected > 0) {
-            socket_read((*systemArgs).file_descriptor, (*systemArgs).frame);
-            printCANframe(*((*systemArgs).frame));
-            pthread_mutex_unlock((*systemArgs).mutex);
+            socket_read(systemArgs->file_descriptor, systemArgs->frame);
+            printCANframe(*(systemArgs->frame));
+            pthread_mutex_unlock(systemArgs->mutex);
         } else {
-            pthread_mutex_unlock((*systemArgs).mutex);
+            pthread_mutex_unlock(systemArgs->mutex);
         }
 
     }

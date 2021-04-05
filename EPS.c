@@ -44,15 +44,15 @@ void *systemTransmit(void *args) {
     
     while (1) {
 
-        pthread_mutex_lock((*systemArgs).mutex);
+        pthread_mutex_lock(systemArgs->mutex);
 
-        (*systemArgs).frame->can_id = 0x01;   
-        (*systemArgs).frame->can_dlc = 1;
-        (*systemArgs).frame->data[0] = 0x01;
+        systemArgs->frame->can_id = 0x01;   
+        systemArgs->frame->can_dlc = 1;
+        systemArgs->frame->data[0] = 0x01;
 
-        socket_write((*systemArgs).file_descriptor, (*systemArgs).frame);
+        socket_write(systemArgs->file_descriptor, systemArgs->frame);
 
-        pthread_mutex_unlock((*systemArgs).mutex);
+        pthread_mutex_unlock(systemArgs->mutex);
 
     }
 
@@ -64,22 +64,22 @@ void *systemReceive(void *args) {
     
     while (1) {
 
-        pthread_mutex_lock((*systemArgs).mutex);
+        pthread_mutex_lock(systemArgs->mutex);
 
-        socket_read((*systemArgs).file_descriptor, (*systemArgs).frame);
-        printCANframe(*((*systemArgs).frame));
+        socket_read(systemArgs->file_descriptor, systemArgs->frame);
+        printCANframe(*(systemArgs->frame));
         
-        if ((*systemArgs).frame->can_id == 0x01) {
+        if (systemArgs->frame->can_id == 0x01) {
 
-            (*systemArgs).frame->can_id = 0x02;   
-            (*systemArgs).frame->can_dlc = 1;
-            (*systemArgs).frame->data[0] = 0x4B;
+            systemArgs->frame->can_id = 0x02;   
+            systemArgs->frame->can_dlc = 1;
+            systemArgs->frame->data[0] = 0x4B;
             
-            socket_write((*systemArgs).file_descriptor, (*systemArgs).frame);
+            socket_write(systemArgs->file_descriptor, systemArgs->frame);
         
         }
 
-        pthread_mutex_unlock((*systemArgs).mutex);
+        pthread_mutex_unlock(systemArgs->mutex);
 
     }
 
