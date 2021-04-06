@@ -93,19 +93,19 @@ int* healthCheck (int file_descriptor, pthread_mutex_t *mutex) {
             pthread_mutex_unlock(mutex);
 
             switch (frame.can_id) {
-                case 0x7F:
+                case 0x40:
                     systemStatus[1] = frame.data[0];
                     break;                
-                case 0x8F:
+                case 0x50:
                     systemStatus[2] = frame.data[0];
                     break;
-                case 0x9F:
+                case 0x60:
                     systemStatus[3] = frame.data[0];
                     break;
-                case 0xBF:
+                case 0x70:
                     systemStatus[4] = frame.data[0];
                     break;
-                case 0xFF:
+                case 0x80:
                     systemStatus[5] = frame.data[0];
                     break;
             }

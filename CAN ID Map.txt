@@ -1,0 +1,11 @@
+0x01 - Health Check Request from CDH
+0x02 - System Request from CDH
+0x40 - Health Check Response from EPS
+0x50 - Health Check Response from SOLAR
+0x60 - Health Check Response from ACS
+0x70 - Health Check Response from ADS
+0x80 - Health Check Response from CTH
+0x41 - System Response from EPS
+0x51 - System Response from SOLAR
+0x61 - System Response from ACS
+0x71 - System Response from ADS
