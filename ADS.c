@@ -48,11 +48,11 @@ void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
     socket_read(file_descriptor, &frame);
     printCANframe(frame);
 
-    if (frame.can_id == 0x01) {
+    if (frame.can_id == 0x010) {
 
-        frame.can_id = 70;
+        frame.can_id = 0x171;
         frame.can_dlc = 1;
-        frame.data[0] = 0x01; // Here, the system makes tests and return if the ADS is OK
+        frame.data[0] = 0x001; // Here, the system makes tests and return if the ADS is OK
 
         socket_write(file_descriptor, &frame);
 
@@ -73,9 +73,9 @@ void *systemReceive(void *args) {
         socket_read(systemArgs->file_descriptor, systemArgs->frame);
         printCANframe(*(systemArgs->frame));
         
-        if (systemArgs->frame->can_id == 0x02) {
+        if (systemArgs->frame->can_id == 0x020) {
 
-            systemArgs->frame->can_id = 0x71;   
+            systemArgs->frame->can_id = 0x271;   
             systemArgs->frame->can_dlc = 8;
             systemArgs->frame->data[0] = 0x6B;
             systemArgs->frame->data[1] = 0x01;
@@ -87,7 +87,13 @@ void *systemReceive(void *args) {
             systemArgs->frame->data[7] = 0x2B;
             
             socket_write(systemArgs->file_descriptor, systemArgs->frame);
-        
+
+            systemArgs->frame->can_id = 0x272;   
+            socket_write(systemArgs->file_descriptor, systemArgs->frame);
+
+            systemArgs->frame->can_id = 0x273;   
+            socket_write(systemArgs->file_descriptor, systemArgs->frame);
+
         }
 
         pthread_mutex_unlock(systemArgs->mutex);

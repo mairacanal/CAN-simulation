@@ -1,11 +1,28 @@
-0x01 - Health Check Request from CDH
-0x02 - System Request from CDH
-0x40 - Health Check Response from EPS
-0x50 - Health Check Response from SOLAR
-0x60 - Health Check Response from ACS
-0x70 - Health Check Response from ADS
-0x80 - Health Check Response from CTH
-0x41 - System Response from EPS
-0x51 - System Response from SOLAR
-0x61 - System Response from ACS
-0x71 - System Response from ADS
+vcan0
+
+0x010 - Health Check Request from CDH
+0x020 - System Request from CDH
+0x141 - Health Check Response from EPS
+0x151 - Health Check Response from SOLAR
+0x161 - Health Check Response from ACS
+0x171 - Health Check Response from ADS
+0x241 - System Response from EPS
+0x251 - System Response from SOLAR
+0x261 - System Response from ACS
+0x271 - System Response from ADS - 1º pkg (Status, Quarténions, soma dos INA219)
+0x272 - System Response from ADS - 2º pkg (Status, Quarténions, soma dos INA219)
+0x273 - System Response from ADS - 3º pkg (Status, Quarténions, soma dos INA219)
+
+vcan1
+
+0x010 - Health Check Request from CDH
+0x020 - System Request from CDH
+0x181 - Health Check Response from CTH
+0x281 - System Response from CTH
+0x381 - Image solicitation from CDH
+0x38F - Image packages
+
+0xXYZ
+    X = Identifies the operation
+    Y = Identifies the subsystem
+    Z = Identifies the number of packages

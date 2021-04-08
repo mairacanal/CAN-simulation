@@ -20,7 +20,7 @@ int main () {
     pthread_t systemThread;
     struct systemArgs *receiveArgs = (struct systemArgs *)malloc(sizeof(struct systemArgs));
 
-    socket_initiation("vcan0", &s);
+    socket_initiation("vcan1", &s);
     healthCheck(s, &systemCommunicationMutex);
 
     receiveArgs->file_descriptor = s;
@@ -47,11 +47,11 @@ void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
     socket_read(file_descriptor, &frame);
     printCANframe(frame);
 
-    if (frame.can_id == 0x01) {
+    if (frame.can_id == 0x010) {
 
-        frame.can_id = 0x80;
+        frame.can_id = 0x181;
         frame.can_dlc = 1;
-        frame.data[0] = 0x01; // Here, the system makes tests and return if the ACS is OK
+        frame.data[0] = 0x001; // Here, the system makes tests and return if the ACS is OK
 
         socket_write(file_descriptor, &frame);
 
@@ -70,6 +70,40 @@ void *systemReceive(void *args) {
         pthread_mutex_lock(systemArgs->mutex);
 
         socket_read(systemArgs->file_descriptor, systemArgs->frame);
+
+        if (systemArgs->frame->can_id == 0x020) {
+
+            systemArgs->frame->can_id = 0x281;
+            systemArgs->frame->can_dlc = 1;
+            systemArgs->frame->data[0] = 0x001; 
+
+            socket_write(systemArgs->file_descriptor, systemArgs->frame);
+
+        } else if (systemArgs->frame->can_id == 0x381) {
+
+            __uint8_t count;
+
+            for (int i = 0; i < 10000; i++) {
+
+                if (count < 0xFF) count++;
+                else count = 0;
+
+                systemArgs->frame->can_id = 0x38F;
+                systemArgs->frame->can_dlc = 8;
+                for (int j = 0; j < 8; j++) {
+                    systemArgs->frame->data[j] = count; 
+                }
+                socket_write(systemArgs->file_descriptor, systemArgs->frame);
+
+            }
+
+            systemArgs->frame->can_dlc = 1;
+            systemArgs->frame->data[0] = 0x001;
+
+            socket_write(systemArgs->file_descriptor, systemArgs->frame);   
+
+        }
+
         printCANframe(*(systemArgs->frame));
 
         pthread_mutex_unlock(systemArgs->mutex);

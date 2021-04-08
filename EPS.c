@@ -47,17 +47,17 @@ void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
     socket_read(file_descriptor, &frame);
     printCANframe(frame);
 
-    if (frame.can_id == 0x01) {
+    if (frame.can_id == 0x010) {
 
-        frame.can_id = 0x40;
+        frame.can_id = 0x141;
         frame.can_dlc = 1;
-        frame.data[0] = 0x01; // Here, the system makes tests and return if the EPS is OK
+        frame.data[0] = 0x001; // Here, the system makes tests and return if the EPS is OK
 
         socket_write(file_descriptor, &frame);
 
-        frame.can_id = 0x50;
+        frame.can_id = 0x151;
         frame.can_dlc = 1;
-        frame.data[0] = 0x01; // Here, the system makes tests and return if the SOLAR is OK    
+        frame.data[0] = 0x001; // Here, the system makes tests and return if the SOLAR is OK    
 
         socket_write(file_descriptor, &frame);
 
@@ -78,9 +78,9 @@ void *systemReceive(void *args) {
         socket_read(systemArgs->file_descriptor, systemArgs->frame);
         printCANframe(*(systemArgs->frame));
         
-        if (systemArgs->frame->can_id == 0x02) {
+        if (systemArgs->frame->can_id == 0x020) {
 
-            systemArgs->frame->can_id = 0x41;   
+            systemArgs->frame->can_id = 0x241;   
             systemArgs->frame->can_dlc = 4;
             systemArgs->frame->data[0] = 0x4B;
             systemArgs->frame->data[1] = 0x01;
@@ -89,7 +89,7 @@ void *systemReceive(void *args) {
 
             socket_write(systemArgs->file_descriptor, systemArgs->frame);
 
-            systemArgs->frame->can_id = 0x51;   
+            systemArgs->frame->can_id = 0x251;   
             systemArgs->frame->can_dlc = 4;
             systemArgs->frame->data[0] = 0xFB;
             systemArgs->frame->data[1] = 0xFA;
