@@ -19,8 +19,8 @@ vcan1
 0x020 - System Request from CDH
 0x181 - Health Check Response from CTH
 0x281 - System Response from CTH
-0x381 - Image solicitation from CDH
-0x38F - Image packages
+0x381 - Image Request from CDH
+0x38F - Image Response Packages
 
 0xXYZ
     X = Identifies the operation

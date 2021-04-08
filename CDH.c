@@ -4,63 +4,60 @@
 #include "can.h"
 
 struct systemArgs {
-    int file_descriptor;
-    int CTH_file_descriptor;
+    int fd;
+    int CTHfd;
     pthread_mutex_t *mutex;
-    struct can_frame *frame;
 };
 
-int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t *mutex);
+int CTHconnection = 0;
+
+int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex);
+void *CTHtransmitReceive (void *args);
 void *systemTransmit(void *args);
 void *systemReceive(void *args);
 
 int main () {
 
-    int s, t;
-    int rct, rcr;
+    int fd0, fd1;
+    int rct, rcr, rcc;
     int *systemStatus;
-    pthread_mutex_t systemCommunicationMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t systemMutex = PTHREAD_MUTEX_INITIALIZER;
 
-    struct can_frame transmitFrame, receiveFrame;
-    pthread_t systemTThread, systemRThread;
+    pthread_t transmitThread, receiveThread, CTHThread;
     struct systemArgs *transmitArgs = (struct systemArgs *)malloc(sizeof(struct systemArgs));
     struct systemArgs *receiveArgs = (struct systemArgs *)malloc(sizeof(struct systemArgs));
+    struct systemArgs *CTHArgs = (struct systemArgs *)malloc(sizeof(struct systemArgs));
 
-    socket_initiation("vcan0", &s);
-    socket_initiation("vcan1", &t);
-    systemStatus = healthCheck(s, t, &systemCommunicationMutex);
+    socket_initiation("vcan0", &fd0);
+    socket_initiation("vcan1", &fd1);
+    systemStatus = healthCheck(fd0, fd1, &systemMutex);
 
-    transmitArgs->file_descriptor = s;
-    transmitArgs->CTH_file_descriptor = t;
-    transmitArgs->mutex = &systemCommunicationMutex;
-    transmitArgs->frame = &transmitFrame;
+    transmitArgs->fd = fd0;
+    transmitArgs->CTHfd = fd1;
+    transmitArgs->mutex = &systemMutex;
 
-    receiveArgs->file_descriptor = s;
-    receiveArgs->CTH_file_descriptor = t;
-    receiveArgs->mutex = &systemCommunicationMutex;
-    receiveArgs->frame = &receiveFrame;
+    receiveArgs->fd = fd0;
+    receiveArgs->CTHfd = fd1;
+    receiveArgs->mutex = &systemMutex;
 
-    if ( (rct = pthread_create(&systemTThread, NULL, systemTransmit, (void *) transmitArgs) ) ) {
+    CTHArgs->fd = fd0;
+    CTHArgs->CTHfd = fd1;
+    CTHArgs->mutex = &systemMutex;
 
-        printf("Thread creation failed: %d\n", rct);
+    if ( (rct = pthread_create(&transmitThread, NULL, systemTransmit, (void *) transmitArgs)) ) printf("Thread creation failed: %d\n", rct);
+    if ( (rcr = pthread_create(&receiveThread, NULL, systemReceive, (void *) receiveArgs)) ) printf("Thread creation failed: %d\n", rcr);
+    if ( (rcc = pthread_create(&CTHThread, NULL, CTHtransmitReceive, (void *) CTHArgs)) ) printf("Thread creation failed: %d\n", rcc);
 
-    }
+    pthread_join(transmitThread, NULL);
+    pthread_join(receiveThread, NULL);
+    pthread_join(CTHThread, NULL);
 
-    if ( (rcr = pthread_create(&systemRThread, NULL, systemReceive, (void *) receiveArgs) ) ) {
-
-        printf("Thread creation failed: %d\n", rcr);
-
-    }
-
-    pthread_join(systemTThread, NULL);
-    pthread_join(systemRThread, NULL);
-
-    socket_close(s);
-    socket_close(t);
+    socket_close(fd0);
+    socket_close(fd1);
 
 }
 
-int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t *mutex) {
+int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
 
     struct can_frame frame;
     int systemStatus[6]; // CDH_ERROR, EPS_ERROR, SOLAR_ERROR, ACS_ERROR, ADS_ERROR, CTH_ERROR
@@ -69,8 +66,8 @@ int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t 
     frame.can_dlc = 1;
     frame.data[0] = 0x001;
 
-    socket_write(file_descriptor, &frame);
-    socket_write(CTH_file_descriptor, &frame);
+    socket_write(fd, &frame);
+    socket_write(CTHfd, &frame);
 
     fd_set readfd;
     int selected;
@@ -81,21 +78,19 @@ int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t 
         pthread_mutex_lock(mutex);
     
         FD_ZERO(&readfd);
-        FD_SET(file_descriptor, &readfd);
+        FD_SET(fd, &readfd);
 
-        selected = select(file_descriptor + 1, &readfd, NULL, NULL, &tv);
+        selected = select(fd + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
             
-            pthread_mutex_unlock(mutex);
             for (int i = 0; i < 6; i++) systemStatus[i] = 0;
             return systemStatus;
 
         } else if (selected > 0) {
 
-            socket_read(file_descriptor, &frame);
+            socket_read(fd, &frame);
             printCANframe(frame);
-            pthread_mutex_unlock(mutex);
 
             switch (frame.can_id) {
                 case 0x141:
@@ -112,16 +107,12 @@ int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t 
                     break;
             }
 
-        } else {
-            pthread_mutex_unlock(mutex);
         }
-
-        pthread_mutex_lock(mutex);
     
         FD_ZERO(&readfd);
-        FD_SET(CTH_file_descriptor, &readfd);
+        FD_SET(CTHfd, &readfd);
 
-        selected = select(CTH_file_descriptor + 1, &readfd, NULL, NULL, &tv);
+        selected = select(CTHfd + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
         
@@ -129,8 +120,7 @@ int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t 
         
         } else if (selected > 0) {
 
-            socket_read(CTH_file_descriptor, &frame);
-            printf("");
+            socket_read(CTHfd, &frame);
             printCANframe(frame);
             pthread_mutex_unlock(mutex);
 
@@ -147,23 +137,63 @@ int* healthCheck (int file_descriptor, int CTH_file_descriptor, pthread_mutex_t 
     return systemStatus;
 }
 
-void *systemTransmit(void *args) {
+void *CTHtransmitReceive (void *args) {
 
     struct systemArgs *systemArgs = (struct systemArgs*)args;
+    struct can_frame frame;
     
     while (1) {
 
-        pthread_mutex_lock(systemArgs->mutex);
+        if (CTHconnection == 1) {
 
-        systemArgs->frame->can_id = 0x020;   
-        systemArgs->frame->can_dlc = 1;
-        systemArgs->frame->data[0] = 0x001;
+            pthread_mutex_lock(systemArgs->mutex);
 
-        socket_write(systemArgs->file_descriptor, systemArgs->frame);
+            frame.can_id = 0x381;   
+            frame.can_dlc = 1;
+            frame.data[0] = 0x001;
 
-        pthread_mutex_unlock(systemArgs->mutex);
+            socket_write(systemArgs->CTHfd, &frame);
 
-        sleep(5);
+            do {
+                
+                socket_read(systemArgs->CTHfd, &frame);
+                printCANframe(frame);
+
+
+            } while (frame.can_dlc != 1 || frame.data[0] != 0x001);
+
+            CTHconnection = 0;
+
+            pthread_mutex_unlock(systemArgs->mutex);
+        }
+
+    }
+}
+
+void *systemTransmit(void *args) {
+
+    struct systemArgs *systemArgs = (struct systemArgs*)args;
+    struct can_frame frame;
+
+    while (1) {
+
+        for (int i = 0; i < 5; i++) {
+
+            pthread_mutex_lock(systemArgs->mutex);
+
+            frame.can_id = 0x020;   
+            frame.can_dlc = 1;
+            frame.data[0] = 0x001;
+
+            socket_write(systemArgs->fd, &frame);
+
+            pthread_mutex_unlock(systemArgs->mutex);
+
+            sleep(5);
+
+        }
+
+        CTHconnection = 1;
 
     }
 
@@ -171,26 +201,27 @@ void *systemTransmit(void *args) {
 
 void *systemReceive(void *args) {
 
-    struct systemArgs *systemArgs = (struct systemArgs*)args;
     fd_set readfd;
     int selected;
+    struct can_frame frame;
     struct timeval tv = {.tv_sec = 0, .tv_usec = 0};
+    struct systemArgs *systemArgs = (struct systemArgs*)args;
 
     while (1) {
 
         pthread_mutex_lock(systemArgs->mutex);
 
         FD_ZERO(&readfd);
-        FD_SET(systemArgs->file_descriptor, &readfd);
+        FD_SET(systemArgs->fd, &readfd);
 
-        selected = select(systemArgs->file_descriptor + 1, &readfd, NULL, NULL, &tv);
+        selected = select(systemArgs->fd + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
             perror("Select error");
             pthread_mutex_unlock(systemArgs->mutex);
         } else if (selected > 0) {
-            socket_read(systemArgs->file_descriptor, systemArgs->frame);
-            printCANframe(*(systemArgs->frame));
+            socket_read(systemArgs->fd, &frame);
+            printCANframe(frame);
             pthread_mutex_unlock(systemArgs->mutex);
         } else {
             pthread_mutex_unlock(systemArgs->mutex);
