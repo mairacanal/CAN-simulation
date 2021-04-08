@@ -4,28 +4,25 @@
 #include "can.h"
 
 struct systemArgs {
-    int file_descriptor;
+    int fd;
     pthread_mutex_t *mutex;
-    struct can_frame *frame;
 };
 
-void healthCheck(int file_descriptor, pthread_mutex_t *mutex);
+void healthCheck(int fd, pthread_mutex_t *mutex);
 void *systemReceive(void *args);
 
 int main () {
 
     int s, rc;
-    struct can_frame receiveFrame;
-    pthread_mutex_t systemCommunicationMutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_t systemThread;
+    pthread_mutex_t systemMutex = PTHREAD_MUTEX_INITIALIZER;
     struct systemArgs *receiveArgs = (struct systemArgs *)malloc(sizeof(struct systemArgs));
 
     socket_initiation("vcan0", &s);
-    healthCheck(s, &systemCommunicationMutex);
+    healthCheck(s, &systemMutex);
 
-    receiveArgs->file_descriptor = s;
-    receiveArgs->mutex = &systemCommunicationMutex;
-    receiveArgs->frame = &receiveFrame;
+    receiveArgs->fd = s;
+    receiveArgs->mutex = &systemMutex;
 
     if ( (rc = pthread_create(&systemThread, NULL, systemReceive, (void *) receiveArgs) ) ) {
 
@@ -38,13 +35,13 @@ int main () {
 
 }
 
-void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
+void healthCheck(int fd, pthread_mutex_t *mutex) {
 
     struct can_frame frame;
     
     pthread_mutex_lock(mutex);
 
-    socket_read(file_descriptor, &frame);
+    socket_read(fd, &frame);
     printCANframe(frame);
 
     if (frame.can_id == 0x010) {
@@ -53,7 +50,7 @@ void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
         frame.can_dlc = 1;
         frame.data[0] = 0x001; // Here, the system makes tests and return if the ADS is OK
 
-        socket_write(file_descriptor, &frame);
+        socket_write(fd, &frame);
 
     }
 
@@ -64,28 +61,29 @@ void healthCheck(int file_descriptor, pthread_mutex_t *mutex) {
 void *systemReceive(void *args) {
 
     struct systemArgs *systemArgs = (struct systemArgs*)args;
+    struct can_frame frame;
     
     while (1) {
 
         pthread_mutex_lock(systemArgs->mutex);
 
-        socket_read(systemArgs->file_descriptor, systemArgs->frame);
-        printCANframe(*(systemArgs->frame));
+        socket_read(systemArgs->fd, &frame);
+        printCANframe(frame);
         
-        if (systemArgs->frame->can_id == 0x020) {
+        if (frame.can_id == 0x020) {
 
-            systemArgs->frame->can_id = 0x261;   
-            systemArgs->frame->can_dlc = 8;
-            systemArgs->frame->data[0] = 0x5B;
-            systemArgs->frame->data[1] = 0x6B;
-            systemArgs->frame->data[2] = 0x7B;
-            systemArgs->frame->data[3] = 0xFF;
-            systemArgs->frame->data[4] = 0x74;
-            systemArgs->frame->data[5] = 0x9A;
-            systemArgs->frame->data[6] = 0x05;
-            systemArgs->frame->data[7] = 0xBB;
+            frame.can_id = 0x261;   
+            frame.can_dlc = 8;
+            frame.data[0] = 0x5B;
+            frame.data[1] = 0x6B;
+            frame.data[2] = 0x7B;
+            frame.data[3] = 0xFF;
+            frame.data[4] = 0x74;
+            frame.data[5] = 0x9A;
+            frame.data[6] = 0x05;
+            frame.data[7] = 0xBB;
             
-            socket_write(systemArgs->file_descriptor, systemArgs->frame);
+            socket_write(systemArgs->fd, &frame);
         
         }
 
