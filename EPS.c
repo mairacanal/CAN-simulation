@@ -7,6 +7,7 @@
 
 #include <pthread.h>
 #include "can.h"
+#include "CAN_ID_map.h"
 
 struct systemArgs {
     int fd;
@@ -49,15 +50,15 @@ void healthCheck(int fd, pthread_mutex_t *mutex) {
     socket_read(fd, &frame);
     printCANframe(frame);
 
-    if (frame.can_id == 0x010) {
+    if (frame.can_id == CDH_HC_REQ) {
 
-        frame.can_id = 0x141;
+        frame.can_id = EPS_HC_RES;
         frame.can_dlc = 1;
         frame.data[0] = 0x001; // Here, the system makes tests and return if the EPS is OK
 
         socket_write(fd, &frame);
 
-        frame.can_id = 0x151;
+        frame.can_id = SOLAR_HC_RES;
         frame.can_dlc = 1;
         frame.data[0] = 0x001; // Here, the system makes tests and return if the SOLAR is OK    
 
@@ -82,9 +83,9 @@ void *systemReceive(void *args) {
         socket_read(systemArgs->fd, &frame);
         printCANframe(frame);
         
-        if (frame.can_id == 0x020) {
+        if (frame.can_id == CDH_SYS_REQ) {
 
-            frame.can_id = 0x241;   
+            frame.can_id = EPS_SYS_RES;   
             frame.can_dlc = 4;
             frame.data[0] = 0x4B;
             frame.data[1] = 0x01;
@@ -93,7 +94,7 @@ void *systemReceive(void *args) {
 
             socket_write(systemArgs->fd, &frame);
 
-            frame.can_id = 0x251;   
+            frame.can_id = SOLAR_SYS_RES;   
             frame.can_dlc = 4;
             frame.data[0] = 0xFB;
             frame.data[1] = 0xFA;

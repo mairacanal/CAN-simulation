@@ -7,6 +7,7 @@
 
 #include <pthread.h>
 #include "can.h"
+#include "CAN_ID_map.h"
 
 struct systemArgs {
     int fd;
@@ -49,9 +50,9 @@ void healthCheck(int fd, pthread_mutex_t *mutex) {
     socket_read(fd, &frame);
     printCANframe(frame);
 
-    if (frame.can_id == 0x010) {
+    if (frame.can_id == CDH_HC_REQ) {
 
-        frame.can_id = 0x161;
+        frame.can_id = ACS_HC_RES;
         frame.can_dlc = 1;
         frame.data[0] = 0x001; // Here, the system makes tests and return if the ADS is OK
 
@@ -75,9 +76,9 @@ void *systemReceive(void *args) {
         socket_read(systemArgs->fd, &frame);
         printCANframe(frame);
         
-        if (frame.can_id == 0x020) {
+        if (frame.can_id == CDH_SYS_REQ) {
 
-            frame.can_id = 0x261;   
+            frame.can_id = ACS_SYS_RES;   
             frame.can_dlc = 8;
             frame.data[0] = 0x5B;
             frame.data[1] = 0x6B;

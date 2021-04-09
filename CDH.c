@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include "can.h"
+#include "CAN_ID_map.h"
 
 struct systemArgs {
     int fd;
@@ -69,7 +70,7 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
     struct can_frame frame;
     int systemStatus[6]; // CDH_ERROR, EPS_ERROR, SOLAR_ERROR, ACS_ERROR, ADS_ERROR, CTH_ERROR
 
-    frame.can_id = 0x010;
+    frame.can_id = CDH_HC_REQ;
     frame.can_dlc = 1;
     frame.data[0] = 0x001;
 
@@ -102,16 +103,16 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
             printCANframe(frame);
 
             switch (frame.can_id) {
-                case 0x141:
+                case EPS_HC_RES:
                     systemStatus[1] = frame.data[0];
                     break;                
-                case 0x151:
+                case SOLAR_HC_RES:
                     systemStatus[2] = frame.data[0];
                     break;
-                case 0x161:
+                case ACS_HC_RES:
                     systemStatus[3] = frame.data[0];
                     break;
-                case 0x171:
+                case ADS_HC_RES:
                     systemStatus[4] = frame.data[0];
                     break;
             }
@@ -132,7 +133,7 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
             socket_read(CTHfd, &frame);
             printCANframe(frame);
 
-            if (frame.can_id == 0x181) systemStatus[5] = frame.data[0];
+            if (frame.can_id == CTH_HC_RES) systemStatus[5] = frame.data[0];
 
         } 
 
@@ -154,7 +155,7 @@ void *CTHtransmitReceive (void *args) {
 
             pthread_mutex_lock(systemArgs->mutex);
 
-            frame.can_id = 0x381;   
+            frame.can_id = CDH_IMG_REQ;   
             frame.can_dlc = 1;
             frame.data[0] = 0x001;
 
@@ -187,7 +188,7 @@ void *systemTransmit(void *args) {
 
             pthread_mutex_lock(systemArgs->mutex);
 
-            frame.can_id = 0x020;   
+            frame.can_id = CDH_SYS_REQ;   
             frame.can_dlc = 1;
             frame.data[0] = 0x001;
 
