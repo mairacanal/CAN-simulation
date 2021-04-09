@@ -46,11 +46,11 @@ int main () {
 
     if ( (rct = pthread_create(&transmitThread, NULL, systemTransmit, (void *) transmitArgs)) ) printf("Thread creation failed: %d\n", rct);
     if ( (rcr = pthread_create(&receiveThread, NULL, systemReceive, (void *) receiveArgs)) ) printf("Thread creation failed: %d\n", rcr);
-    if ( (rcc = pthread_create(&CTHThread, NULL, CTHtransmitReceive, (void *) CTHArgs)) ) printf("Thread creation failed: %d\n", rcc);
+    // if ( (rcc = pthread_create(&CTHThread, NULL, CTHtransmitReceive, (void *) CTHArgs)) ) printf("Thread creation failed: %d\n", rcc);
 
     pthread_join(transmitThread, NULL);
     pthread_join(receiveThread, NULL);
-    pthread_join(CTHThread, NULL);
+    // pthread_join(CTHThread, NULL);
 
     socket_close(fd0);
     socket_close(fd1);
@@ -69,11 +69,13 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
     socket_write(fd, &frame);
     socket_write(CTHfd, &frame);
 
+    systemStatus[0] = 0x001; // CDH internal system check 
+
     fd_set readfd;
     int selected;
     struct timeval tv = {.tv_sec = 0, .tv_usec = 0};
 
-    for (int i = 0; i < 5; i++) {
+    do {
 
         pthread_mutex_lock(mutex);
     
@@ -84,7 +86,7 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
 
         if (selected == -1) {
             
-            for (int i = 0; i < 6; i++) systemStatus[i] = 0;
+            for (int i = 0; i < 5; i++) systemStatus[i] = 0;
             return systemStatus;
 
         } else if (selected > 0) {
@@ -115,24 +117,21 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
         selected = select(CTHfd + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
-        
-            pthread_mutex_unlock(mutex);    
+
+            systemStatus[5] = frame.data[0];
         
         } else if (selected > 0) {
 
             socket_read(CTHfd, &frame);
             printCANframe(frame);
-            pthread_mutex_unlock(mutex);
 
             if (frame.can_id == 0x181) systemStatus[5] = frame.data[0];
 
-        } else {
+        } 
 
-            pthread_mutex_unlock(mutex);
+        pthread_mutex_unlock(mutex);
 
-        }
-
-    }
+    } while (selected == 0);
 
     return systemStatus;
 }
