@@ -1,3 +1,10 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * CDH (Communication)                                                             *
+ * Author: Maíra Canal (@mairacanal)                                               *
+ * São Carlos School of Engineering - University of São Paulo                      *
+ * Abril/2021                                                                      *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/select.h>
@@ -46,11 +53,11 @@ int main () {
 
     if ( (rct = pthread_create(&transmitThread, NULL, systemTransmit, (void *) transmitArgs)) ) printf("Thread creation failed: %d\n", rct);
     if ( (rcr = pthread_create(&receiveThread, NULL, systemReceive, (void *) receiveArgs)) ) printf("Thread creation failed: %d\n", rcr);
-    // if ( (rcc = pthread_create(&CTHThread, NULL, CTHtransmitReceive, (void *) CTHArgs)) ) printf("Thread creation failed: %d\n", rcc);
+    if ( (rcc = pthread_create(&CTHThread, NULL, CTHtransmitReceive, (void *) CTHArgs)) ) printf("Thread creation failed: %d\n", rcc);
 
     pthread_join(transmitThread, NULL);
     pthread_join(receiveThread, NULL);
-    // pthread_join(CTHThread, NULL);
+    pthread_join(CTHThread, NULL);
 
     socket_close(fd0);
     socket_close(fd1);

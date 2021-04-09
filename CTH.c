@@ -1,6 +1,12 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * CTH                                                                             *
+ * Author: Maíra Canal (@mairacanal)                                               *
+ * São Carlos School of Engineering - University of São Paulo                      *
+ * Abril/2021                                                                      *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
 #include <pthread.h>
-#include <unistd.h>
-#include <sys/select.h>
 #include "can.h"
 
 struct systemArgs {
