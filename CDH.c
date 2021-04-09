@@ -185,6 +185,7 @@ void *systemTransmit(void *args) {
             frame.data[0] = 0x001;
 
             socket_write(systemArgs->fd, &frame);
+            socket_write(systemArgs->CTHfd, &frame);
 
             pthread_mutex_unlock(systemArgs->mutex);
 
@@ -216,15 +217,26 @@ void *systemReceive(void *args) {
         selected = select(systemArgs->fd + 1, &readfd, NULL, NULL, &tv);
 
         if (selected == -1) {
-            perror("Select error");
-            pthread_mutex_unlock(systemArgs->mutex);
+            perror("CAN error");
         } else if (selected > 0) {
             socket_read(systemArgs->fd, &frame);
             printCANframe(frame);
-            pthread_mutex_unlock(systemArgs->mutex);
         } else {
-            pthread_mutex_unlock(systemArgs->mutex);
         }
+
+        FD_ZERO(&readfd);
+        FD_SET(systemArgs->CTHfd, &readfd);
+
+        selected = select(systemArgs->CTHfd + 1, &readfd, NULL, NULL, &tv);
+
+        if (selected == -1) {
+            perror("CAN error");
+        } else if (selected > 0) {
+            socket_read(systemArgs->CTHfd, &frame);
+            printCANframe(frame);
+        }
+        
+        pthread_mutex_unlock(systemArgs->mutex);
 
     }
 
