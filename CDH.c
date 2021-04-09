@@ -19,7 +19,7 @@ struct systemArgs {
 
 int CTHconnection = 0;
 
-int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex);
+void healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex, int *systemStatus);
 void *CTHtransmitReceive (void *args);
 void *systemTransmit(void *args);
 void *systemReceive(void *args);
@@ -28,7 +28,7 @@ int main () {
 
     int fd0, fd1;
     int rct, rcr, rcc;
-    int *systemStatus;
+    int systemStatus[6]; // CDH_ERROR, EPS_ERROR, SOLAR_ERROR, ACS_ERROR, ADS_ERROR, CTH_ERROR
     pthread_mutex_t systemMutex = PTHREAD_MUTEX_INITIALIZER;
 
     pthread_t transmitThread, receiveThread, CTHThread;
@@ -38,7 +38,7 @@ int main () {
 
     socket_initiation("vcan0", &fd0);
     socket_initiation("vcan1", &fd1);
-    systemStatus = healthCheck(fd0, fd1, &systemMutex);
+    healthCheck(fd0, fd1, &systemMutex, systemStatus);
 
     transmitArgs->fd = fd0;
     transmitArgs->CTHfd = fd1;
@@ -65,10 +65,9 @@ int main () {
 
 }
 
-int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
+void healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex, int *systemStatus) {
 
     struct can_frame frame;
-    int systemStatus[6]; // CDH_ERROR, EPS_ERROR, SOLAR_ERROR, ACS_ERROR, ADS_ERROR, CTH_ERROR
 
     frame.can_id = CDH_HC_REQ;
     frame.can_dlc = 1;
@@ -95,7 +94,6 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
         if (selected == -1) {
             
             for (int i = 0; i < 5; i++) systemStatus[i] = 0;
-            return systemStatus;
 
         } else if (selected > 0) {
 
@@ -141,13 +139,13 @@ int* healthCheck (int fd, int CTHfd, pthread_mutex_t *mutex) {
 
     } while (selected == 0);
 
-    return systemStatus;
 }
 
 void *CTHtransmitReceive (void *args) {
 
     struct systemArgs *systemArgs = (struct systemArgs*)args;
     struct can_frame frame;
+    int count = 0;
     
     while (1) {
 
@@ -164,16 +162,18 @@ void *CTHtransmitReceive (void *args) {
             do {
                 
                 socket_read(systemArgs->CTHfd, &frame);
+                count++;
                 printCANframe(frame);
-
 
             } while (frame.can_dlc != 1 || frame.data[0] != 0x001);
 
+            printf("\n########%d\n", count);
             CTHconnection = 0;
 
             pthread_mutex_unlock(systemArgs->mutex);
         }
-
+//ip link set vcan0 down
+//ip link set vcan0 up type vcan bitrate 250000 txqueuelen 1000
     }
 }
 
